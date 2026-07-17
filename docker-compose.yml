@@ -1,0 +1,14 @@
+services:
+  app:
+    image: node:24.12.0
+    container_name: bobo_weird_adventure_app
+    user: node
+    working_dir: /app
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./app:/app
+    ports:
+      - "8002:8002"
+    command: sleep infinity

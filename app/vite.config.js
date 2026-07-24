@@ -17,5 +17,6 @@ export default defineConfig({
   },
   server: {
     port: 8002,
+    allowedHosts: ['galleria.mydns.jp']
   },
 })

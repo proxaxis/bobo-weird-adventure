@@ -1,13 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import GameView from '@/views/GameView.vue';
+import GamePlayView from '@/views/GamePlayView.vue';
+import ScenarioView from '@/views/ScenarioView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      name: 'Game',
-      component: GameView,
+      name: 'GamePlay',
+      component: GamePlayView,
+    },
+    {
+      path: '/scenario',
+      name: 'Scenario',
+      component: ScenarioView,
     },
   ],
 });

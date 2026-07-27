@@ -1,5 +1,9 @@
 import { defineStore } from 'pinia';
 
 export const useUserStore = defineStore('user', () => {
-  return {};
+  const scheneId = ref('schene_001');
+  
+  return {
+    scheneId,
+  };
 });

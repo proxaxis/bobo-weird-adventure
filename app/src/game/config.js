@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 
-export const CONFIGS = {
+export const defineConfig = () => ({
   // ゲーム設定
   GAME_WINDOW_WIDTH: 1024,
   GAME_WINDOW_HEIGHT: 800,
@@ -8,11 +8,10 @@ export const CONFIGS = {
   WALLS_RESTITUTION: 1.0,
   WALLS_FRICTION: 0,
   GOAL_SPAWN_POINT: { x: 950, y: 760 },
-  ENABLE_DEBUG_MODE: true,
+  ENABLE_DEBUG_MODE: false,
   GAME_WINDOW_BG_COLOR: '#666666',
 
   // 敵の設定
-  ENEMY_SPAWN_COUNT: 5,
   ENEMY_SPAWN_POINT: { x: 80, y: 80 },
   ENEMY_MAX_SPEED: 20,
   ENEMY_MIN_SPEED: 18,
@@ -37,4 +36,4 @@ export const CONFIGS = {
   PLAYER_MOVE_FORCE_MAGNITUDE: 0.0035,
   PLAYER_STOP_FORCE_MULTIPLIER: 0.8,
   PLAYER_JUMP_FORCE: 12,
-};
+});

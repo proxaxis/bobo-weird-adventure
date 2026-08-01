@@ -1,74 +1,84 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { watch, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useScenarioStore } from '@/stores/scenario.js';
-import { CONFIGS } from '@/lib/constants.js';
+import { useGameStore } from '@/stores/game.js';
+import { useDebugStore } from '@/stores/debug.js';
+import { defineConfig } from '@/game/config.js';
 import CharHiropon from '@/components/CharHiropon.vue';
 import CharBobo from '@/components/CharBobo.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
 
-const GAME_WINDOW_WIDTH = `${CONFIGS.GAME_WINDOW_WIDTH}px`;
-const GAME_WINDOW_HEIGHT = `${CONFIGS.GAME_WINDOW_HEIGHT}px`;
-const GAME_WINDOW_BG_COLOR = CONFIGS.GAME_WINDOW_BG_COLOR;
+const config = defineConfig();
+const GAME_WINDOW_WIDTH = `${config.GAME_WINDOW_WIDTH}px`;
+const GAME_WINDOW_HEIGHT = `${config.GAME_WINDOW_HEIGHT}px`;
+const GAME_WINDOW_BG_COLOR = config.GAME_WINDOW_BG_COLOR;
 
 const scenarioStore = useScenarioStore();
+const gameStore = useGameStore();
+const debugStore = useDebugStore();
 const router = useRouter();
 
-const schene = ref(null);
-const vmScenarioState = ref('loading'); // 'loading', 'playing', 'choice', 'checked', 'completed'
-const nowLineIndex = ref(0);
-
-const isGameLoading = computed(() => vmScenarioState.value === 'loading');
-const isGamePlaying = computed(() => vmScenarioState.value === 'playing');
-const isGameChoice = computed(() => vmScenarioState.value === 'choice');
-const isGameChecked = computed(() => vmScenarioState.value === 'checked');
-const isGameCompleted = computed(() => vmScenarioState.value === 'completed');
-const lines = computed(() => (schene.value ? schene.value.lines : []));
-const choices = computed(() => (schene.value ? schene.value.choices : []));
+const backgroundImage = computed(() => scenarioStore.background);
 
 function goNextLine() {
-  if (vmScenarioState.value === 'playing') {
-    if (nowLineIndex.value + 1 < lines.value.length) {
-      nowLineIndex.value++;
+  if (scenarioStore.isGamePlaying) {
+    if (scenarioStore.nowLineIndex + 1 < scenarioStore.lines.length) {
+      scenarioStore.nowLineIndex++;
     } else {
-      vmScenarioState.value = 'choice';
+      scenarioStore.state = 'choice';
     }
   }
 }
 
 function makeChoice(choiceIndex) {
-  if (vmScenarioState.value === 'choice') {
-    const choice = choices.value[choiceIndex];
+  if (scenarioStore.isGameChoice) {
+    const choice = scenarioStore.choices[choiceIndex];
     if (choice.target) {
-      schene.value = scenarioStore.getSceneById(choice.target);
-      nowLineIndex.value = 0;
-      vmScenarioState.value = 'playing';
+      scenarioStore.setRandomScenario();
+      scenarioStore.nowLineIndex = 0;
+      scenarioStore.state = 'playing';
     } else {
-      vmScenarioState.value = 'checked';
-      scenarioStore.checkTheScene();
+      scenarioStore.state = 'checked';
+      scenarioStore.checkCurrentScenario();
+      gameStore.state = 'continue';
     }
   }
 }
 
+watch(
+  () => [config.ENABLE_DEBUG_MODE, scenarioStore],
+  ([enabled, data]) => {
+    if (enabled) {
+      debugStore.data = data;
+    }
+  },
+  { immediate: true }
+);
+
 onMounted(() => {
+  scenarioStore.state = 'loading';
+
   if (scenarioStore.isCompleted) {
-    vmScenarioState.value = 'completed';
+    scenarioStore.state = 'completed';
     return;
   }
 
-  schene.value = scenarioStore.getRandomScene();
-  vmScenarioState.value = 'playing';
+  scenarioStore.setRandomScenario();
+  scenarioStore.state = 'playing';
 });
 </script>
 
 <template>
   <div class="scenario-view">
-    <div class="screen-colored" v-if="isGameLoading">
+    <div class="screen-colored" v-if="scenarioStore.isGameLoading">
       <p>Loading Scenario...</p>
     </div>
 
-    <div class="player screen-colored" v-if="isGamePlaying || isGameChoice">
-      <header>{{ schene.title }}</header>
+    <img v-if="scenarioStore.background" :src="scenarioStore.background" class="screen-colored" />
+
+    <div class="player screen-colored" v-if="scenarioStore.isGamePlaying || scenarioStore.isGameChoice">
+      <header>{{ scenarioStore.title }}</header>
 
       <main>
         <div class="character-wrapper">
@@ -80,27 +90,23 @@ onMounted(() => {
       </main>
 
       <footer>
-        <p>{{ lines[nowLineIndex].speaker }}: {{ lines[nowLineIndex].text }}</p>
+        <p>{{ scenarioStore.line.speaker }}: {{ scenarioStore.line.text }}</p>
         <button @click="goNextLine">
           <IconPlay size="2rem" />
         </button>
       </footer>
     </div>
 
-    <ul class="screen" v-if="isGameChoice">
-      <li v-for="(choice, i) in choices" :key="i">
+    <ul class="screen" v-if="scenarioStore.isGameChoice">
+      <li v-for="(choice, i) in scenarioStore.choices" :key="i">
         <button @click="makeChoice(i)">
           {{ choice.label }}
         </button>
       </li>
     </ul>
 
-    <div class="screen-colored game-checked" v-if="isGameChecked">
-      <button @click="router.push({ name: 'GamePlay' })">ゲームに戻る</button>
-    </div>
-
-    <div class="screen-colored game-checked" v-if="isGameCompleted">
-      <p>All scenes have been completed.</p>
+    <div class="screen-colored game-checked" v-if="scenarioStore.isGameChecked || scenarioStore.isGameCompleted">
+      <p v-if="scenarioStore.isGameCompleted">All scenes have been completed.</p>
       <button @click="router.push({ name: 'GamePlay' })">ゲームに戻る</button>
     </div>
   </div>
@@ -117,6 +123,7 @@ onMounted(() => {
 .screen {
   width: v-bind(GAME_WINDOW_WIDTH);
   height: v-bind(GAME_WINDOW_HEIGHT);
+  background-color: v-bind(GAME_WINDOW_BG_COLOR);
 }
 
 .screen-colored {
@@ -243,5 +250,9 @@ ul {
       background-color: rgba(255, 255, 255, 0.15);
     }
   }
+}
+
+img {
+  position: fixed;
 }
 </style>

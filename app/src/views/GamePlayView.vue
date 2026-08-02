@@ -6,6 +6,9 @@ import { useGameStore } from '@/stores/game.js';
 import { defineConfig } from '@/game/config.js';
 import { defineStages, defineSceneModules } from '@/game/stages.js';
 import { useDebugStore } from '@/stores/debug.js';
+import GameFailedImage from '@/assets/game-failed.png';
+import GameSuccessImage from '@/assets/game-success.png';
+import GameOverlay from '@/components/GameOverlay.vue';
 
 const router = useRouter();
 const gameStore = useGameStore();
@@ -15,8 +18,8 @@ const stages = defineStages();
 
 const rfGameContainer = ref(null);
 
-let gameInstance = null;
 let handleStartKeydown = null;
+let gameInstance = null;
 
 const GAME_WINDOW_WIDTH = config.GAME_WINDOW_WIDTH + 'px';
 const GAME_WINDOW_HEIGHT = config.GAME_WINDOW_HEIGHT + 'px';
@@ -25,7 +28,6 @@ function startStageScene() {
   if (!gameInstance || !gameStore.stage) return null;
 
   gameInstance.scene.start(gameStore.stage.scene, { ...gameStore.stage.config });
-  gameStore.state = 'ready';
 }
 
 async function initGameInstance() {
@@ -55,41 +57,39 @@ async function initGameInstance() {
 }
 
 function resetGame() {
-  gameStore.state = 'loading';
-  gameStore.stageIndex = 0;
+  gameStore.state = gameStore.LOADING;
+
   if (gameInstance) {
     gameInstance.destroy(true);
     gameInstance = null;
   }
+
   initGameInstance();
 }
 
-function nextStage() {
+function nextGame() {
   const nextStageIndex = gameStore.stageIndex + 1;
   if (nextStageIndex >= stages.length) {
-    gameStore.state = 'completed';
+    gameStore.state = gameStore.COMPLETED;
     return;
   }
 
-  gameStore.state = 'continue';
+  gameStore.state = gameStore.LOADING;
   gameStore.stageIndex = nextStageIndex;
-  startStageScene();
+
+  if (gameInstance) {
+    gameInstance.destroy(true);
+    gameInstance = null;
+  }
+
+  initGameInstance();
 }
 
 watch(
-  () => gameStore.isGameFailed,
+  () => gameStore.isGameFailure,
   (to) => {
     if (to) {
       router.push({ name: 'Scenario' });
-    }
-  },
-);
-
-watch(
-  () => gameStore.isGameSuccess,
-  (to) => {
-    if (to) {
-      nextStage();
     }
   },
 );
@@ -98,26 +98,32 @@ onMounted(async () => {
   handleStartKeydown = (event) => {
     if (event.repeat) return;
 
-    const sceneInstance = gameInstance?.scene.getScene(gameStore.stage?.scene);
+    const instance = gameInstance?.scene.getScene(gameStore.stage?.scene);
 
-    if (event.code === 'Space' && !gameStore.isGameEnded) {
+    if (event.code === 'Space') {
       event.preventDefault();
-      if (gameStore.state === 'ready' && sceneInstance) {
-        sceneInstance.scene.resume();
-        gameStore.state = 'playing';
+      if (gameStore.isGameReady && instance) {
+        instance.scene.resume();
+        gameStore.state = gameStore.PLAYING;
         return;
       }
-      if (gameStore.state === 'playing' && sceneInstance) {
-        sceneInstance.jumpPlayer();
+      if (gameStore.isGamePlaying && instance) {
+        instance.jumpPlayer();
       }
       return;
     }
 
-    if (event.code === 'KeyR' && gameStore.isGameEnded) {
+    if (event.code === 'KeyR' && gameStore.isGameFailure) {
       event.preventDefault();
       resetGame();
     }
+
+    if (event.code === 'KeyR' && gameStore.isGameSuccess) {
+      event.preventDefault();
+      nextGame();
+    }
   };
+
   window.addEventListener('keydown', handleStartKeydown);
   await initGameInstance();
 });
@@ -129,125 +135,49 @@ onBeforeUnmount(() => {
   }
   if (gameInstance) {
     gameInstance.destroy(true);
+    gameInstance = null;
   }
 });
 </script>
 
 <template>
-  <div class="game-container">
-    <div class="overlay" v-if="!gameStore.isGamePlaying">
-      <div v-if="gameStore.isGameLoading" data-state="loading">
-        <p>Loading...</p>
-      </div>
+  <div class="game-play-view">
+    <GameOverlay v-if="gameStore.isGameLoading">
+      <p>Loading...</p>
+    </GameOverlay>
 
-      <div v-if="gameStore.isGameReady" data-state="ready">
-        <p>Press SPACE to start</p>
-      </div>
-
-      <div v-if="gameStore.isGameFailed" data-state="failed">
-        <button type="button" @click="resetGame">Press R to restart</button>
-      </div>
-
-      <div v-if="gameStore.isGameSuccess" data-state="success">
-        <button type="button" @click="resetGame">Press R to restart</button>
-      </div>
-    </div>
+    <GameOverlay v-if="gameStore.isGameReady">
+      <template #header>
+        <h2>{{ gameStore.stage?.title }}</h2>
+      </template>
+      <p>Press SPACE to start</p>
+    </GameOverlay>
 
     <div ref="rfGameContainer" class="canvas-wrapper"></div>
 
-    <input type="text" v-if="config.ENABLE_DEBUG_MODE" v-model="gameStore.state" />
+    <GameOverlay v-if="gameStore.isGameSuccess" :backgroundImage="GameSuccessImage">
+      <template #header>
+        <h2>{{ gameStore.stage?.title }}</h2>
+      </template>
+      <template #footer>
+        <button type="button" @click="nextGame">Press R to restart</button>
+      </template>
+    </GameOverlay>
+
+    <GameOverlay v-if="gameStore.isGameCompleted" :backgroundImage="GameSuccessImage">
+      <template #header>
+        <h2>すべてのステージをクリアしました!</h2>
+      </template>
+
+      <p>Congratulations!</p>
+    </GameOverlay>
   </div>
 </template>
 
 <style lang="scss" scoped>
-/* スタイルは元のまま変更なし */
-.game-container {
-  width: 100%;
-  height: 100vh;
-  background-image: url('/bg-sky.jpg');
-  background-size: cover;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.overlay {
-  position: fixed;
-  background-color: rgba(0, 0, 0, 0.25);
-  pointer-events: none;
-  z-index: 1;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  p {
-    font-size: 2rem;
-  }
-
-  div {
-    width: v-bind(GAME_WINDOW_WIDTH);
-    height: v-bind(GAME_WINDOW_HEIGHT);
-    position: relative;
-    pointer-events: auto;
-    backdrop-filter: blur(5px);
-
-    &[data-state='loading'],
-    &[data-state='ready'] {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    &[data-state='failed'] {
-      background-image: url('/game-is-over.png');
-      background-size: cover;
-    }
-
-    &[data-state='success'] {
-      background-image: url('/game-is-success.png');
-      background-size: cover;
-    }
-
-    button {
-      width: 20rem;
-      height: 4rem;
-      border: 2px solid rgba(255, 255, 255, 0.8);
-      border-radius: 10rem;
-      background-color: rgba(0, 0, 0, 0.55);
-      color: var(--text-white);
-      font-size: 1rem;
-      font-weight: 700;
-      cursor: pointer;
-      position: absolute;
-      transform: translate(-50%, -50%);
-      left: 50%;
-      right: 50%;
-      bottom: 0;
-
-      &:hover {
-        background-color: rgba(255, 255, 255, 0.15);
-      }
-    }
-  }
-}
-
-.canvas-wrapper {
+.game-play-view {
   width: v-bind(GAME_WINDOW_WIDTH);
   height: v-bind(GAME_WINDOW_HEIGHT);
   pointer-events: none;
-}
-
-input[type='text'] {
-  position: fixed;
-  z-index: 2;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 2rem;
-  background-color: rgba(0, 0, 0, 0.5);
-  color: var(--text-white);
-  font-size: 12px;
-  padding: 4px;
 }
 </style>

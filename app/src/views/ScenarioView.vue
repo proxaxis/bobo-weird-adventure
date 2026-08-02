@@ -1,49 +1,53 @@
 <script setup>
-import { watch, onMounted, computed } from 'vue';
+import { watch, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useScenarioStore } from '@/stores/scenario.js';
-import { useGameStore } from '@/stores/game.js';
 import { useDebugStore } from '@/stores/debug.js';
 import { defineConfig } from '@/game/config.js';
 import CharHiropon from '@/components/CharHiropon.vue';
+import CharAngryHiropon from '@/components/CharAngryHiropon.vue';
 import CharBobo from '@/components/CharBobo.vue';
+import GameOverlay from '@/components/GameOverlay.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
+import GameFailedImage from '@/assets/game-failed.png';
 
 const config = defineConfig();
-const GAME_WINDOW_WIDTH = `${config.GAME_WINDOW_WIDTH}px`;
-const GAME_WINDOW_HEIGHT = `${config.GAME_WINDOW_HEIGHT}px`;
-const GAME_WINDOW_BG_COLOR = config.GAME_WINDOW_BG_COLOR;
-
 const scenarioStore = useScenarioStore();
-const gameStore = useGameStore();
 const debugStore = useDebugStore();
 const router = useRouter();
 
-const backgroundImage = computed(() => scenarioStore.background);
+const isCorrectChoice = ref(false);
 
 function goNextLine() {
-  if (scenarioStore.isGamePlaying) {
-    if (scenarioStore.nowLineIndex + 1 < scenarioStore.lines.length) {
-      scenarioStore.nowLineIndex++;
-    } else {
-      scenarioStore.state = 'choice';
-    }
-  }
+  if (scenarioStore.nowLineIndex + 1 < scenarioStore.lines.length) scenarioStore.nowLineIndex += 1;
+  else scenarioStore.state = scenarioStore.CHOOSING;
 }
 
 function makeChoice(choiceIndex) {
-  if (scenarioStore.isGameChoice) {
-    const choice = scenarioStore.choices[choiceIndex];
-    if (choice.target) {
-      scenarioStore.setRandomScenario();
-      scenarioStore.nowLineIndex = 0;
-      scenarioStore.state = 'playing';
-    } else {
-      scenarioStore.state = 'checked';
-      scenarioStore.checkCurrentScenario();
-      gameStore.state = 'continue';
-    }
+  const choice = scenarioStore.selections[choiceIndex];
+  if (choice.target) {
+    scenarioStore.state = scenarioStore.LOADING;
+
+    // If the choice has a target, set the next scenario to the target and reset the line index
+    // scenarioStore.setScenario(choice.target);
+    scenarioStore.nowLineIndex = 0;
+    scenarioStore.state = scenarioStore.CHATTING;
+    return;
   }
+
+  if (choice.isCorrect) {
+    isCorrectChoice.value = true;
+  } else {
+    isCorrectChoice.value = false;
+  }
+
+  scenarioStore.state = scenarioStore.CHECKING;
+}
+
+function goBackGamePlay() {
+  scenarioStore.checkCurrentScenario();
+  scenarioStore.state = scenarioStore.LOADING;
+  router.push({ name: 'GamePlay' });
 }
 
 watch(
@@ -53,36 +57,37 @@ watch(
       debugStore.data = data;
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 onMounted(() => {
-  scenarioStore.state = 'loading';
+  scenarioStore.state = scenarioStore.LOADING;
 
-  if (scenarioStore.isCompleted) {
-    scenarioStore.state = 'completed';
+  if (scenarioStore.uncheckedScenarioIds.length === 0) {
+    scenarioStore.state = scenarioStore.COMPLETED;
     return;
   }
 
   scenarioStore.setRandomScenario();
-  scenarioStore.state = 'playing';
+  scenarioStore.state = scenarioStore.CHATTING;
 });
 </script>
 
 <template>
   <div class="scenario-view">
-    <div class="screen-colored" v-if="scenarioStore.isGameLoading">
+    <GameOverlay v-if="scenarioStore.isScenarioLoading">
       <p>Loading Scenario...</p>
-    </div>
+    </GameOverlay>
 
-    <img v-if="scenarioStore.background" :src="scenarioStore.background" class="screen-colored" />
+    <GameOverlay v-if="!scenarioStore.isScenarioLoading && scenarioStore.background" :backgroundImage="scenarioStore.background" :zIndex="-1" />
 
-    <div class="player screen-colored" v-if="scenarioStore.isGamePlaying || scenarioStore.isGameChoice">
+    <div class="player" v-if="!scenarioStore.isScenarioLoading && !scenarioStore.isScenarioCompleted">
       <header>{{ scenarioStore.title }}</header>
 
       <main>
         <div class="character-wrapper">
-          <CharHiropon :size="0.6" />
+          <CharAngryHiropon v-if="scenarioStore.isScenarioChecking && !isCorrectChoice" :size="0.6" />
+          <CharHiropon :size="0.6" v-else />
         </div>
         <div class="character-wrapper">
           <CharBobo :size="0.6" />
@@ -97,47 +102,41 @@ onMounted(() => {
       </footer>
     </div>
 
-    <ul class="screen" v-if="scenarioStore.isGameChoice">
-      <li v-for="(choice, i) in scenarioStore.choices" :key="i">
-        <button @click="makeChoice(i)">
-          {{ choice.label }}
-        </button>
-      </li>
-    </ul>
+    <GameOverlay v-if="scenarioStore.isScenarioChoosing">
+      <ul>
+        <li v-for="(choice, i) in scenarioStore.selections" :key="i">
+          <button @click="makeChoice(i)">
+            {{ choice.label }}
+          </button>
+        </li>
+      </ul>
+    </GameOverlay>
 
-    <div class="screen-colored game-checked" v-if="scenarioStore.isGameChecked || scenarioStore.isGameCompleted">
-      <p v-if="scenarioStore.isGameCompleted">All scenes have been completed.</p>
-      <button @click="router.push({ name: 'GamePlay' })">ゲームに戻る</button>
-    </div>
+    <GameOverlay v-if="scenarioStore.isScenarioChecking" :backgroundImage="GameFailedImage">
+      <template #footer>
+        <button @click="goBackGamePlay">ゲームに戻る</button>
+      </template>
+    </GameOverlay>
+
+    <GameOverlay v-if="scenarioStore.isScenarioCompleted" :backgroundImage="GameFailedImage">
+      <p v-if="scenarioStore.isScenarioCompleted">All scenes have been completed.</p>
+
+      <template #footer>
+        <button @click="goBackGamePlay">ゲームに戻る</button>
+      </template>
+    </GameOverlay>
   </div>
 </template>
 
 <style lang="scss" scoped>
-.scenario-view {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
-.screen {
-  width: v-bind(GAME_WINDOW_WIDTH);
-  height: v-bind(GAME_WINDOW_HEIGHT);
-  background-color: v-bind(GAME_WINDOW_BG_COLOR);
-}
-
-.screen-colored {
-  width: v-bind(GAME_WINDOW_WIDTH);
-  height: v-bind(GAME_WINDOW_HEIGHT);
-  background-color: v-bind(GAME_WINDOW_BG_COLOR);
-}
-
 .player {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   gap: 1rem;
+  width: var(--game-window-width);
+  height: var(--game-window-height);
 
   header,
   main,
@@ -195,15 +194,11 @@ onMounted(() => {
 }
 
 ul {
-  position: fixed;
-  background-color: rgba(0, 0, 0, 0.2);
-  padding: 1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  z-index: 2;
 
   li {
     width: 100%;
@@ -254,5 +249,19 @@ ul {
 
 img {
   position: fixed;
+}
+
+li {
+  list-style: none;
+}
+
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.icons {
+  fill: var(--text-white);
 }
 </style>

@@ -5,7 +5,8 @@ import BoboBlackImage from '@/assets/bobo_black.png';
 import HageImage from '@/assets/hage.png';
 import GateImage from '@/assets/gate.png';
 import DoorImage from '@/assets/door.png';
-import BackgroundImage from '@/assets/bg-images/5e071ef7a1f61784226878286c969c7a.png';
+import BackgroundImage from '@/assets/stage/5e071ef7a1f61784226878286c969c7a.png';
+import { useGameStore } from '@/stores/game.js';
 
 const config = defineConfig();
 
@@ -18,6 +19,7 @@ export default class MainGameScene extends Phaser.Scene {
     this.enemies = [];
     this.safeZone = null;
     this.config = {};
+    this.gameStore = useGameStore();
   }
 
   init(data) {
@@ -140,7 +142,7 @@ export default class MainGameScene extends Phaser.Scene {
         // プレイヤーと敵が衝突したら失敗
         if (isPlayer && isEnemy) {
           this.scene.pause();
-          this.game.events.emit('game-state-changed', 'failed');
+          this.game.events.emit('game-state-changed', this.gameStore.FAILURE);
         }
       });
       handleEnemyContacts(event);
@@ -153,6 +155,7 @@ export default class MainGameScene extends Phaser.Scene {
 
     // ゲームが開始されるまでポーズする
     this.scene.pause();
+    this.game.events.emit('game-state-changed', this.gameStore.READY);
   }
 
   update() {
@@ -193,7 +196,7 @@ export default class MainGameScene extends Phaser.Scene {
     // プレイヤーがゴールに到達したかどうかを判定
     if (this.goal && this.player && this.matter.overlap(this.player, this.goal)) {
       this.scene.pause();
-      this.game.events.emit('game-state-changed', 'success');
+      this.game.events.emit('game-state-changed', this.gameStore.SUCCESS);
     }
 
     // Vue 側へデバッグ情報を毎フレーム送信

@@ -5,7 +5,6 @@ import BoboBlackImage from '@/assets/bobo_black.png';
 import HageImage from '@/assets/hage.png';
 import GateImage from '@/assets/gate.png';
 import DoorImage from '@/assets/door.png';
-import BackgroundImage from '@/assets/stage/5e071ef7a1f61784226878286c969c7a.png';
 import { useGameStore } from '@/stores/game.js';
 
 const config = defineConfig();
@@ -31,7 +30,7 @@ export default class MainGameScene extends Phaser.Scene {
     this.load.image('Hage', HageImage);
     this.load.image('Gate', GateImage);
     this.load.image('Door', DoorImage);
-    this.load.image('Background', BackgroundImage);
+    this.load.image('Background', this.config.backgroundImage);
   }
 
   create() {

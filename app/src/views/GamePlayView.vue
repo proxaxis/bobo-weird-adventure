@@ -6,7 +6,6 @@ import { useGameStore } from '@/stores/game.js';
 import { defineConfig } from '@/game/config.js';
 import { defineStages, defineSceneModules } from '@/game/stages.js';
 import { useDebugStore } from '@/stores/debug.js';
-import GameFailedImage from '@/assets/game-failed.png';
 import GameSuccessImage from '@/assets/game-success.png';
 import GameOverlay from '@/components/GameOverlay.vue';
 
@@ -110,17 +109,16 @@ onMounted(async () => {
       if (gameStore.isGamePlaying && instance) {
         instance.jumpPlayer();
       }
-      return;
-    }
 
-    if (event.code === 'KeyR' && gameStore.isGameFailure) {
-      event.preventDefault();
-      resetGame();
-    }
+      if (gameStore.isGameFailure) {
+        event.preventDefault();
+        resetGame();
+      }
 
-    if (event.code === 'KeyR' && gameStore.isGameSuccess) {
-      event.preventDefault();
-      nextGame();
+      if (gameStore.isGameSuccess) {
+        event.preventDefault();
+        nextGame();
+      }
     }
   };
 
@@ -160,7 +158,7 @@ onBeforeUnmount(() => {
         <h2>{{ gameStore.stage?.title }}</h2>
       </template>
       <template #footer>
-        <button type="button" @click="nextGame">Press R to restart</button>
+        <button type="button" @click="nextGame">Press SPACE to restart</button>
       </template>
     </GameOverlay>
 

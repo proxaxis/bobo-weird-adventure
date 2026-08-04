@@ -57,8 +57,9 @@ const props = defineProps({
   footer :deep(button) {
     font-size: 1.5rem;
     padding: 0.5rem 1.5rem;
-    border: 1px solid var(--text-black);
+    border: 1px solid var(--text-white);
     border-radius: 50px;
+    color: var(--text-black);
 
     &:hover {
       background-color: var(--text-black);

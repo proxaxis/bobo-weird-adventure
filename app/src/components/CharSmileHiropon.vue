@@ -11,12 +11,12 @@ const props = defineProps({
 });
 
 const WIDTH = `${props.size * 12}rem`;
-const HEIGHT = `${props.size * 14}rem`;
+const HEIGHT = `${props.size * 18}rem`;
 </script>
 
 <template>
-  <div class="char-bobo">
-    <img src="@/assets/bobo_black.png" alt="Bobo" :style="{ opacity: (props.isTalking) ? '1' : '0.5' }" />
+  <div class="char-hiropon">
+    <img src="@/assets/hage_smile.png" alt="Smiling Hiropon" :style="{ opacity: (props.isTalking) ? '1' : '0.5' }" />
     <span></span>
   </div>
 </template>
@@ -25,7 +25,7 @@ const HEIGHT = `${props.size * 14}rem`;
 $w: v-bind(WIDTH);
 $h: v-bind(HEIGHT);
 
-.char-bobo {
+.char-hiropon {
   position: relative;
   width: $w;
   height: $h;

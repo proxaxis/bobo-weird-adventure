@@ -1,11 +1,13 @@
 <script setup>
-import { watch, onMounted, ref } from 'vue';
+import { watch, onMounted, ref, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useScenarioStore } from '@/stores/scenario.js';
 import { useDebugStore } from '@/stores/debug.js';
+import { useGameStore } from '@/stores/game.js';
 import { defineConfig } from '@/game/config.js';
 import CharHiropon from '@/components/CharHiropon.vue';
 import CharAngryHiropon from '@/components/CharAngryHiropon.vue';
+import CharSmileHiropon from '@/components/CharSmileHiropon.vue';
 import CharBobo from '@/components/CharBobo.vue';
 import GameOverlay from '@/components/GameOverlay.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
@@ -14,13 +16,42 @@ import GameFailedImage from '@/assets/game-failed.png';
 const config = defineConfig();
 const scenarioStore = useScenarioStore();
 const debugStore = useDebugStore();
+const gameStore = useGameStore();
 const router = useRouter();
 
 const isCorrectChoice = ref(false);
+const showingText = ref('');
+const showingTextIndex = ref(0);
+const isTextShowing = ref(false);
+const isBoboTalking = ref(false);
+
+let handleSpaceKeyDown = null;
+let handleTextShown = null;
 
 function goNextLine() {
-  if (scenarioStore.nowLineIndex + 1 < scenarioStore.lines.length) scenarioStore.nowLineIndex += 1;
-  else scenarioStore.state = scenarioStore.CHOOSING;
+  showingTextIndex.value = 0;
+  showingText.value = '';
+  if (scenarioStore.nowLineIndex + 1 < scenarioStore.lines.length) {
+    scenarioStore.nowLineIndex += 1;
+    isBoboTalking.value = scenarioStore.line.speaker === 'ぼーぼ';
+    isTextShowing.value = true;
+    handleTextShown = setInterval(() => {
+      if (showingTextIndex.value < scenarioStore.line.text.length) {
+        showingText.value += scenarioStore.line.text[showingTextIndex.value];
+        showingTextIndex.value += 1;
+      } else {
+        resetText();
+      }
+    }, 100);
+  } else {
+    scenarioStore.state = scenarioStore.CHOOSING;
+  }
+}
+
+function resetText() {
+  isTextShowing.value = false;
+  clearInterval(handleTextShown);
+  handleTextShown = null;
 }
 
 function makeChoice(choiceIndex) {
@@ -35,11 +66,14 @@ function makeChoice(choiceIndex) {
     return;
   }
 
-  if (choice.isCorrect) {
-    isCorrectChoice.value = true;
-  } else {
-    isCorrectChoice.value = false;
+  isCorrectChoice.value = choice.isCorrect;
+  if (isCorrectChoice.value) {
+    scenarioStore.correctedScenarioIds.add(scenarioStore.id);
   }
+
+  resetText();
+  showingTextIndex.value = 0;
+  showingText.value = '';
 
   scenarioStore.state = scenarioStore.CHECKING;
 }
@@ -61,15 +95,57 @@ watch(
 );
 
 onMounted(() => {
+  handleSpaceKeyDown = (event) => {
+    if (event.repeat) return;
+
+    if (event.code === 'Space') {
+      event.preventDefault();
+
+      if (scenarioStore.isScenarioChatting) {
+        if (isTextShowing.value) {
+          resetText();
+          showingText.value = scenarioStore.line.text;
+          return;
+        } else {
+          goNextLine();
+          return;
+        }
+      }
+
+      if (scenarioStore.isScenarioChecking || scenarioStore.isScenarioCompleted) {
+        goBackGamePlay();
+      }
+    }
+  };
+
+  window.addEventListener('keydown', handleSpaceKeyDown);
+
   scenarioStore.state = scenarioStore.LOADING;
 
-  if (scenarioStore.uncheckedScenarioIds.length === 0) {
+  if (scenarioStore.uncheckedAvailableScenarioIds.length === 0) {
     scenarioStore.state = scenarioStore.COMPLETED;
     return;
   }
 
   scenarioStore.setRandomScenario();
   scenarioStore.state = scenarioStore.CHATTING;
+
+  isTextShowing.value = true;
+  handleTextShown = setInterval(() => {
+    if (showingTextIndex.value < scenarioStore.line.text.length) {
+      showingText.value += scenarioStore.line.text[showingTextIndex.value];
+      showingTextIndex.value += 1;
+    } else {
+      resetText();
+    }
+  }, 100);
+});
+
+onUnmounted(() => {
+  if (handleSpaceKeyDown) {
+    window.removeEventListener('keydown', handleSpaceKeyDown);
+    handleSpaceKeyDown = null;
+  }
 });
 </script>
 
@@ -86,16 +162,21 @@ onMounted(() => {
 
       <main>
         <div class="character-wrapper">
-          <CharAngryHiropon v-if="scenarioStore.isScenarioChecking && !isCorrectChoice" :size="0.6" />
-          <CharHiropon :size="0.6" v-else />
+          <CharAngryHiropon v-if="scenarioStore.isScenarioChecking && !isCorrectChoice" :size="0.6" :isTalking="!isBoboTalking" />
+          <CharSmileHiropon :size="0.6" v-else-if="scenarioStore.isScenarioChecking && isCorrectChoice" :isTalking="!isBoboTalking" />
+          <CharHiropon :size="0.6" v-else :isTalking="!isBoboTalking" />
         </div>
         <div class="character-wrapper">
-          <CharBobo :size="0.6" />
+          <CharBobo :size="0.6" :isTalking="isBoboTalking" />
         </div>
       </main>
 
       <footer>
-        <p>{{ scenarioStore.line.speaker }}: {{ scenarioStore.line.text }}</p>
+        <p>
+          <span v-if="scenarioStore.isScenarioChoosing">ぼーぼ:</span>
+          <span v-else>{{ scenarioStore.line.speaker }}:</span>
+          {{ showingText }}
+        </p>
         <button @click="goNextLine">
           <IconPlay size="2rem" />
         </button>
@@ -114,15 +195,15 @@ onMounted(() => {
 
     <GameOverlay v-if="scenarioStore.isScenarioChecking" :backgroundImage="GameFailedImage">
       <template #footer>
-        <button @click="goBackGamePlay">ゲームに戻る</button>
+        <button @click="goBackGamePlay">Press SPACE to Go Back</button>
       </template>
     </GameOverlay>
 
     <GameOverlay v-if="scenarioStore.isScenarioCompleted" :backgroundImage="GameFailedImage">
-      <p v-if="scenarioStore.isScenarioCompleted">All scenes have been completed.</p>
+      <p v-if="scenarioStore.isScenarioCompleted">All scenes at stage {{ gameStore.stageIndex + 1 }} have been completed.</p>
 
       <template #footer>
-        <button @click="goBackGamePlay">ゲームに戻る</button>
+        <button @click="goBackGamePlay">Press SPACE to Go Back</button>
       </template>
     </GameOverlay>
   </div>

@@ -4,6 +4,10 @@ const props = defineProps({
     type: Number,
     default: 1,
   },
+  isTalking: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const WIDTH = `${props.size * 12}rem`;
@@ -12,7 +16,7 @@ const HEIGHT = `${props.size * 18}rem`;
 
 <template>
   <div class="char-hiropon">
-    <img src="@/assets/hage.png" alt="Hiropon" />
+    <img src="@/assets/hage.png" alt="Hiropon" :style="{ opacity: (props.isTalking) ? '1' : '0.5' }" />
     <span></span>
   </div>
 </template>

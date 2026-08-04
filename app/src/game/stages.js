@@ -1,4 +1,6 @@
 import MainGameScene from '@/game/scenes/MainGameScene';
+import BossStageBackgroudImage from '@/assets/stage/be8ea5dce682407da0bbc6777b590a9f.png';
+import DefaultStageBackgroudImage from '@/assets/stage/5e071ef7a1f61784226878286c969c7a.png';
 
 export const defineSceneModules = () => ({
   scenes: {
@@ -16,6 +18,7 @@ export const defineStages = () => ([
     scene: 'MainGameScene',
     config: {
       enemySpawnCount: 1,
+      backgroundImage: DefaultStageBackgroudImage,
     },
   },
   {
@@ -24,6 +27,7 @@ export const defineStages = () => ([
     scene: 'MainGameScene',
     config: {
       enemySpawnCount: 2,
+      backgroundImage: DefaultStageBackgroudImage,
     },
   },
   {
@@ -32,6 +36,7 @@ export const defineStages = () => ([
     scene: 'MainGameScene',
     config: {
       enemySpawnCount: 3,
+      backgroundImage: DefaultStageBackgroudImage,
     },
   },
   {
@@ -40,6 +45,7 @@ export const defineStages = () => ([
     scene: 'MainGameScene',
     config: {
       enemySpawnCount: 4,
+      backgroundImage: DefaultStageBackgroudImage,
     },
   },
   {
@@ -48,6 +54,7 @@ export const defineStages = () => ([
     scene: 'MainGameScene',
     config: {
       enemySpawnCount: 5,
+      backgroundImage: DefaultStageBackgroudImage,
     },
   },
   {
@@ -56,6 +63,7 @@ export const defineStages = () => ([
     scene: 'MainGameScene',
     config: {
       enemySpawnCount: 6,
+      backgroundImage: DefaultStageBackgroudImage,
     },
   },
   {
@@ -64,6 +72,7 @@ export const defineStages = () => ([
     scene: 'MainGameScene',
     config: {
       enemySpawnCount: 7,
+      backgroundImage: DefaultStageBackgroudImage,
     },
   },
   {
@@ -72,6 +81,7 @@ export const defineStages = () => ([
     scene: 'MainGameScene',
     config: {
       enemySpawnCount: 8,
+      backgroundImage: DefaultStageBackgroudImage,
     },
   },
   {
@@ -80,14 +90,16 @@ export const defineStages = () => ([
     scene: 'MainGameScene',
     config: {
       enemySpawnCount: 9,
+      backgroundImage: DefaultStageBackgroudImage,
     },
   },
   {
     name: 's10',
-    title: 'Game Stage 10',
+    title: 'Final Stage',
     scene: 'MainGameScene',
     config: {
       enemySpawnCount: 10,
+      backgroundImage: BossStageBackgroudImage,
     },
   },
 ]);

@@ -13,6 +13,7 @@ const scenario = defineScenario();
       <li v-for="(s) in scenario" :key="s.id">
         <div v-if="scenarioStore.checkedScenarioIds.has(s.id)">
           <span>{{ s.title }}</span>
+          <img v-if="scenarioStore.correctedScenarioIds.has(s.id)" src="@/assets/bobo_black.png" alt="Correct" />
         </div>
         <div v-else>
           <span>???</span>
@@ -45,12 +46,24 @@ const scenario = defineScenario();
       display: flex;
       align-items: center;
       justify-content: center;
-      background-color: var(--bg-1);
+      background-color: var(--bg-0);
       padding: 0.5rem 1rem;
       border-radius: 0.5rem;
 
-      span {
-        font-size: 1.2rem;
+      div {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+
+        span {
+          color: var(--text-black);
+          font-size: 1.2rem;
+        }
+
+        img {
+          width: 1.5rem;
+          height: 1.5rem;
+        }
       }
     }
   }

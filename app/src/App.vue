@@ -1,9 +1,11 @@
 <script setup>
 import { useDebugStore } from '@/stores/debug.js';
+import { useGameStore } from '@/stores/game.js';
 import { defineConfig } from '@/game/config.js';
 import ScenarioProgress from '@/components/ScenarioProgress.vue';
 
 const debugStore = useDebugStore();
+const gameStore = useGameStore();
 const config = defineConfig();
 const GAME_WINDOW_HEIGHT = config.GAME_WINDOW_HEIGHT + 'px';
 const GAME_WINDOW_WIDTH = config.GAME_WINDOW_WIDTH + 'px';
@@ -15,7 +17,9 @@ const GAME_WINDOW_WIDTH = config.GAME_WINDOW_WIDTH + 'px';
       <h1>ぼーぼの大冒険</h1>
     </header>
 
-    <aside></aside>
+    <aside>
+      <h2>{{ gameStore.stage?.title || '未選択' }}</h2>
+    </aside>
 
     <main>
       <router-view />
@@ -42,8 +46,9 @@ const GAME_WINDOW_WIDTH = config.GAME_WINDOW_WIDTH + 'px';
 }
 
 :root, .app {
-  --text-white: #fff;
-  --text-black: #000;
+  --text-white: #ffffff;
+  --text-black: #000000;
+  --bg-0: #ffffff;
   --bg-1: #1e1e1e;
   --bg-2: #3f3f3f;
   --game-window-height: v-bind(GAME_WINDOW_HEIGHT);
